@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>za.co.jozijug</groupId>
+		<artifactId>jozijug-todo-workshop</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>todo-exercises</artifactId>
+
+    <!-- war for Jakarta EE servers (default), jar for Quarkus (-Pquarkus) -->
+    <packaging>${todo.packaging}</packaging>
+
+    <properties>
+        <todo.packaging>war</todo.packaging>
+    </properties>
+
+    <build>
+        <finalName>todo</finalName>
+    </build>
+
+    <profiles>
+        <!-- ============================================================
+             Profile 1: any Jakarta EE 11 server (default)
+             Build: mvn clean package        -> target/todo.war
+             ============================================================ -->
+        <profile>
+            <id>jakartaee</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <dependencies>
+                <!-- The server provides the APIs, so they are NOT packaged in the WAR -->
+                <dependency>
+                    <groupId>jakarta.platform</groupId>
+                    <artifactId>jakarta.jakartaee-web-api</artifactId>
+                    <version>11.0.0</version>
+                    <scope>provided</scope>
+                </dependency>
+				<!-- Source: https://mvnrepository.com/artifact/org.eclipse.microprofile.openapi/microprofile-openapi-api -->
+				<dependency>
+				    <groupId>org.eclipse.microprofile.openapi</groupId>
+				    <artifactId>microprofile-openapi-api</artifactId>
+				    <version>4.2</version>
+				</dependency>
+                <!-- Embedded H2 database so the app runs with zero setup -->
+                <dependency>
+                    <groupId>com.h2database</groupId>
+                    <artifactId>h2</artifactId>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                	<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-compiler-plugin</artifactId>
+					</plugin>
+                	<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-surefire-plugin</artifactId>
+					</plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-war-plugin</artifactId>
+                    </plugin>
+		            <plugin>
+		                <groupId>io.openliberty.tools</groupId>
+		                <artifactId>liberty-maven-plugin</artifactId>
+		            </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- ============================================================
+             Profile 2: Quarkus
+             Dev mode: mvn quarkus:dev -Pquarkus
+             Build:    mvn clean package -Pquarkus
+             Run:      java -jar target/quarkus-app/quarkus-run.jar
+             ============================================================ -->
+        <profile>
+            <id>quarkus</id>
+            <properties>
+                <todo.packaging>jar</todo.packaging>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>io.quarkus</groupId>
+                    <artifactId>quarkus-rest</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>io.quarkus</groupId>
+                    <artifactId>quarkus-rest-jsonb</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>io.quarkus</groupId>
+                    <artifactId>quarkus-hibernate-orm</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>io.quarkus</groupId>
+                    <artifactId>quarkus-hibernate-validator</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>io.quarkus</groupId>
+                    <artifactId>quarkus-jdbc-h2</artifactId>
+                </dependency>
+            </dependencies>
+            <build>
+                <resources>
+                    <!-- Quarkus configures JPA from application.properties, so skip persistence.xml -->
+                    <resource>
+                        <directory>src/main/resources</directory>
+                        <excludes>
+                            <exclude>META-INF/persistence.xml</exclude>
+                        </excludes>
+                    </resource>
+                    <!-- Quarkus serves static files from META-INF/resources -->
+                    <resource>
+                        <directory>src/main/webapp</directory>
+                        <targetPath>META-INF/resources</targetPath>
+                        <excludes>
+                            <exclude>WEB-INF/**</exclude>
+                        </excludes>
+                    </resource>
+                </resources>
+                <plugins>
+                    <plugin>
+                        <groupId>io.quarkus.platform</groupId>
+                        <artifactId>quarkus-maven-plugin</artifactId>
+                        <version>${quarkus.platform.version}</version>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

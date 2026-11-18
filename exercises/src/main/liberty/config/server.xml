@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Open Liberty: copy to usr/servers/defaultServer/server.xml,
+     copy target/todo.war to usr/servers/defaultServer/apps/ -->
+<server description="Todo workshop">
+    <featureManager>
+        <feature>webProfile-11.0</feature>
+        <feature>mpOpenAPI-4.1</feature>
+    </featureManager>
+
+    <httpEndpoint id="defaultHttpEndpoint" host="*" httpPort="9080" httpsPort="9443"/>
+
+    <webApplication location="${project.name}.war" contextRoot="/${project.name}">
+    	<classloader commonLibraryRef="H2Lib"/>
+    </webApplication>
+    
+    <cors domain="/api"
+        allowedOrigins="*"
+        allowedMethods="GET, POST, PUT, DELETE, OPTIONS, HEAD"
+        allowCredentials="true"
+        allowedHeaders="origin, content-type, accept, authorization"
+        maxAge="1209600"/>
+</server>

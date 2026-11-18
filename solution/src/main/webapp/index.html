@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Todo workshop</title>
+<style>
+  :root {
+    --bg: #f6f7f4;
+    --surface: #ffffff;
+    --text: #1d2521;
+    --muted: #5e6b64;
+    --line: #d9ded8;
+    --accent: #1f6f5c;
+    --accent-text: #ffffff;
+    --danger: #a32d2d;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151a17;
+      --surface: #1e2521;
+      --text: #e8ece9;
+      --muted: #9aa8a0;
+      --line: #33403a;
+      --accent: #4fb89d;
+      --accent-text: #0e1512;
+      --danger: #f08a8a;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 36rem; margin: 0 auto; padding: 2.5rem 1rem 4rem; }
+  h1 { font-size: 1.75rem; margin: 0 0 .25rem; letter-spacing: -0.01em; }
+  .sub { margin: 0 0 1.5rem; color: var(--muted); }
+  form { display: flex; gap: .5rem; margin-bottom: .75rem; }
+  input[type=text] {
+    flex: 1; min-width: 0; padding: .6rem .75rem; font: inherit; color: inherit;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+  }
+  button {
+    font: inherit; padding: .6rem .9rem; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--surface); color: var(--text);
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button.link { border: 0; background: none; padding: .25rem .5rem; color: var(--muted); }
+  button.link:hover { color: var(--text); }
+  button.link.delete:hover { color: var(--danger); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #message { min-height: 1.5rem; margin: 0 0 .75rem; color: var(--danger); }
+  ul { list-style: none; margin: 0; padding: 0; background: var(--surface);
+       border: 1px solid var(--line); border-radius: 8px; }
+  li { display: flex; align-items: center; gap: .5rem; padding: .6rem .75rem; border-top: 1px solid var(--line); }
+  li:first-child { border-top: 0; }
+  li .title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  li.done .title { color: var(--muted); text-decoration: line-through; }
+  li input[type=checkbox] { width: 1.1rem; height: 1.1rem; accent-color: var(--accent); }
+  li input[type=text] { padding: .3rem .5rem; }
+  .empty { padding: 1.25rem .75rem; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Todo workshop</h1>
+  <p class="sub">A Jakarta EE 11 app. Same code on a Jakarta EE server and on Quarkus.</p>
+
+  <form id="add-form">
+    <input type="text" id="new-title" placeholder="What needs doing?" maxlength="120"
+           aria-label="New todo title" autocomplete="off">
+    <button class="primary" type="submit">Add todo</button>
+  </form>
+  <p id="message" role="alert"></p>
+  <ul id="list"></ul>
+</main>
+
+<script>
+  // Relative URL on purpose: works at /todo/ on a server and at / on Quarkus.
+  const API = 'api/todos';
+  const list = document.getElementById('list');
+  const message = document.getElementById('message');
+
+  function showError(text) { message.textContent = text || ''; }
+
+  async function call(url, options) {
+    const res = await fetch(url, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options
+    });
+    if (res.status === 400) throw new Error('The server rejected that title. Use 1 to 120 characters.');
+    if (res.status === 404) throw new Error('That todo no longer exists. The list was refreshed.');
+    if (!res.ok) throw new Error('The server returned an error (HTTP ' + res.status + ').');
+    return res.status === 204 ? null : res.json();
+  }
+
+  async function load() {
+    try {
+      render(await call(API));
+    } catch (e) { showError(e.message); }
+  }
+
+  function render(todos) {
+    list.replaceChildren();
+    if (todos.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = 'Nothing to do yet. Add your first todo above.';
+      list.append(li);
+      return;
+    }
+    todos.forEach(t => list.append(row(t)));
+  }
+
+  function row(todo) {
+    const li = document.createElement('li');
+    if (todo.completed) li.className = 'done';
+
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = todo.completed;
+    box.setAttribute('aria-label', 'Mark "' + todo.title + '" as done');
+    box.onchange = () => save(todo.id, { title: todo.title, completed: box.checked });
+
+    const title = document.createElement('span');
+    title.className = 'title';
+    title.textContent = todo.title;
+
+    const edit = document.createElement('button');
+    edit.className = 'link';
+    edit.textContent = 'Edit';
+    edit.onclick = () => startEdit(li, todo);
+
+    const del = document.createElement('button');
+    del.className = 'link delete';
+    del.textContent = 'Delete';
+    del.onclick = () => remove(todo.id);
+
+    li.append(box, title, edit, del);
+    return li;
+  }
+
+  function startEdit(li, todo) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = todo.title;
+    input.maxLength = 120;
+    input.setAttribute('aria-label', 'Todo title');
+    const finish = () => save(todo.id, { title: input.value, completed: todo.completed });
+    input.onkeydown = e => { if (e.key === 'Enter') finish(); if (e.key === 'Escape') load(); };
+    input.onblur = finish;
+    li.querySelector('.title').replaceWith(input);
+    input.focus();
+  }
+
+  async function save(id, body) {
+    showError('');
+    try { await call(API + '/' + id, { method: 'PUT', body: JSON.stringify(body) }); }
+    catch (e) { showError(e.message); }
+    load();
+  }
+
+  async function remove(id) {
+    showError('');
+    try { await call(API + '/' + id, { method: 'DELETE' }); }
+    catch (e) { showError(e.message); }
+    load();
+  }
+
+  document.getElementById('add-form').onsubmit = async e => {
+    e.preventDefault();
+    const input = document.getElementById('new-title');
+    showError('');
+    try {
+      await call(API, { method: 'POST', body: JSON.stringify({ title: input.value, completed: false }) });
+      input.value = '';
+    } catch (err) { showError(err.message); }
+    load();
+  };
+
+  load();
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Used on Jakarta EE servers. Quarkus ignores this file (see the quarkus profile in pom.xml)
+     and reads src/main/resources/application.properties instead. -->
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_2.xsd"
+             version="3.2">
+
+    <persistence-unit name="todoPU" transaction-type="JTA">
+        <!-- Defined in WEB-INF/web.xml -->
+        <jta-data-source>java:app/jdbc/TodoDS</jta-data-source>
+        <class>za.co.jozijug.todo.Todo</class>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+        <properties>
+            <!-- Let the persistence provider create the table for us (workshop only!) -->
+            <property name="jakarta.persistence.schema-generation.database.action" value="drop-and-create"/>
+        </properties>
+    </persistence-unit>
+</persistence>
